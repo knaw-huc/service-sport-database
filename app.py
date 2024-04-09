@@ -38,6 +38,14 @@ def get_facet():
     ret_struc = index.get_facet(facet + ".keyword", amount)
     return json.dumps(ret_struc)
 
+@app.route("/nested-facet", methods=['GET'])
+def get_nested_facet():
+    facet = request.args.get("name")
+    amount = request.args.get("amount")
+    facet_filter = request.args.get("filter")
+    ret_struc = index.get_nested_facet(facet + ".keyword", amount, facet_filter)
+    return json.dumps(ret_struc)
+
 @app.route("/filter-facet", methods=['GET'])
 def get_filter_facet():
     facet = request.args.get("name")

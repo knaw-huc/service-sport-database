@@ -3,6 +3,7 @@ import json
 from elasticsearch import Elasticsearch
 import math
 
+
 class Index:
     def __init__(self, config):
         self.config = config
@@ -17,33 +18,32 @@ class Index:
                 ret_str = ret_str + "[" + char.upper() + char.lower() + "]"
         return ret_str + ".*"
 
-
     def get_facet(self, field, amount):
         ret_array = []
         response = self.client.search(
             index="sport",
             body=
-                {
-                    "size": 0,
-                    "aggs": {
-                        "names": {
-                            "terms": {
-                                "field": field,
-                                "size": amount,
-                                "order": {
-                                    "_count": "desc"
-                                }
-                            },
-                            "aggs": {
-                                "byHash": {
-                                    "terms": {
-                                        "field": "hash"
-                                    }
+            {
+                "size": 0,
+                "aggs": {
+                    "names": {
+                        "terms": {
+                            "field": field,
+                            "size": amount,
+                            "order": {
+                                "_count": "desc"
+                            }
+                        },
+                        "aggs": {
+                            "byHash": {
+                                "terms": {
+                                    "field": "hash"
                                 }
                             }
                         }
                     }
                 }
+            }
         )
         for hits in response["aggregations"]["names"]["buckets"]:
             buffer = {"key": hits["key"], "doc_count": hits["doc_count"]}
@@ -58,7 +58,7 @@ class Index:
             {
                 "query": {
                     "regexp": {
-                        field : self.no_case(facet_filter)
+                        field: self.no_case(facet_filter)
                     }
                 },
                 "size": 0,
@@ -66,7 +66,7 @@ class Index:
                     "names": {
                         "terms": {
                             "field": field,
-                            "size": amount,
+                            "size": 20,
                             "order": {
                                 "_count": "desc"
                             }
@@ -77,26 +77,41 @@ class Index:
         )
         for hits in response["aggregations"]["names"]["buckets"]:
             buffer = {"key": hits["key"], "doc_count": hits["doc_count"]}
+            if facet_filter.lower() in buffer["key"].lower():
+                ret_array.append(buffer)
+        return ret_array
+
+    def get_nested_facet(self, field, amount, facet_filter):
+        ret_array = []
+        path = field.split('.')[0]
+        response = self.client.search(
+            index="sport",
+            body=
+            {"size": 0, "aggs": {"nested_terms": {"nested": {"path": path}, "aggs": {
+                "filter": {"filter": {"regexp": {"$field.raw": "$filter.*"}},
+                           "aggs": {"names": {"terms": {"field": "$field.raw", "size": amount}}}}}}}}
+        )
+        for hits in response["aggregations"]["nested_terms"]["filter"]["names"]["buckets"]:
+            buffer = {"key": hits["key"], "doc_count": hits["doc_count"]}
             ret_array.append(buffer)
         return ret_array
 
-
-
     def browse(self, page, length, orderFieldName, searchvalues):
         int_page = int(page)
-        start = (int_page -1) * length
+        start = (int_page - 1) * length
         matches = []
 
         if searchvalues == "none":
             response = self.client.search(
                 index="sport",
-                body={ "query": {
+                body={"query": {
                     "match_all": {}},
                     "size": length,
                     "from": start,
-                    "_source": ["id", "naam", "plaats", "provincie", "beginjaar", "eindjaar", "levensbeschouwing", "sports"],
+                    "_source": ["id", "naam", "plaats", "provincie", "beginjaar", "eindjaar", "levensbeschouwing",
+                                "sports"],
                     "sort": [
-                        { "naam.keyword": {"order":"asc"}}
+                        {"naam.keyword": {"order": "asc"}}
                     ]
                 }
             )
@@ -110,26 +125,21 @@ class Index:
 
             response = self.client.search(
                 index="sport",
-                body={ "query": {
+                body={"query": {
                     "bool": {
                         "must": matches
                     }},
                     "size": length,
                     "from": start,
-                    "_source": ["id", "naam", "plaats", "provincie", "beginjaar", "eindjaar", "levensbeschouwing", "sports"],
+                    "_source": ["id", "naam", "plaats", "provincie", "beginjaar", "eindjaar", "levensbeschouwing",
+                                "sports"],
                     "sort": [
-                        { "naam.keyword": {"order":"asc"}}
+                        {"naam.keyword": {"order": "asc"}}
                     ]
                 }
             )
-        ret_array = {"amount" : response["hits"]["total"]["value"], "pages": math.ceil(response["hits"]["total"]["value"] / length) ,"items": []}
+        ret_array = {"amount": response["hits"]["total"]["value"],
+                     "pages": math.ceil(response["hits"]["total"]["value"] / length), "items": []}
         for item in response["hits"]["hits"]:
             ret_array["items"].append(item["_source"])
         return ret_array
-
-
-
-
-
-
-
