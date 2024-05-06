@@ -29,6 +29,7 @@ class Db:
         self.single_field(record, "naam", "Naam")
         self.single_field(record, "opm_naam", "Opmerkingen naam")
         self.single_field(record, "plaats", "Plaats")
+        self.get_provincie(record["id"])
         self.single_field(record, "doelstelling", "Doelstelling")
         self.single_field(record, "levensbeschouwing", "Levensbeschouwing")
         self.date_fields(record, "begindatum", record["begindatum_soort"], "Begindatum")
@@ -51,7 +52,21 @@ class Db:
             self.item.append({"field": key, "value": str(item[key]) + " (" + typeDate + ")", "label": label})
         return
 
-    def get_provincie(self):
-        pass
+    def get_provincie(self, id):
+        retList = []
+        list = self.get_data("SELECT provincie FROM vereniging_provincie WHERE vereniging =" + str(id) + " ORDER BY provincie")
+        for item in list:
+            retList.append(item["provincie"])
+        if retList:
+            self.item.append({"field": "provincie", "value": ", ".join(item for item in retList), "label": "Provincie"})
+        return
+
+    def get_data(self, sql):
+        cur = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql)
+        records = cur.fetchall()
+        cur.close()
+        return records
+
 
 

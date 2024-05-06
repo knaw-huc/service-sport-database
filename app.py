@@ -31,11 +31,10 @@ def hello_world():
     return json.dumps(retStruc)
 
 
-@app.route("/facet", methods=['GET'])
+@app.route("/facet", methods=['GET','POST'])
 def get_facet():
-    facet = request.args.get("name")
-    amount = request.args.get("amount")
-    ret_struc = index.get_facet(facet + ".keyword", amount)
+    struc = request.get_json()
+    ret_struc = index.get_facet(struc["name"], struc["amount"], struc["filter"], struc["searchvalues"])
     return json.dumps(ret_struc)
 
 @app.route("/nested-facet", methods=['GET'])
@@ -57,8 +56,9 @@ def get_filter_facet():
 @app.route("/browse", methods=['POST'])
 def browse():
     struc = request.get_json()
+    print(struc);
     #ret_struc = index.browse(struc["page"], struc["page_length"], struc["sortorder"] + ".keyword", struc["searchvalues"])
-    ret_struc = index.browse(struc["page"], struc["page_length"], "naam.keyword", struc["searchvalues"])
+    ret_struc = index.browse(struc["page"], struc["page_length"], struc["searchvalues"])
     return json.dumps(ret_struc)
 
 
